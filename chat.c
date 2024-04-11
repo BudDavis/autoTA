@@ -29,7 +29,7 @@
 int main(int argc, char* argv[])
 {
     char* remoteIp;
-    char str[100], str2[100];
+    char str[100];
     bool quit = false;
 
     // Verify arguments are good
