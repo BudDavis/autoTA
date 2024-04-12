@@ -16,7 +16,7 @@
 #include <stdio.h>           // printf, scanf
 #include <string.h>          // strlen, strcmp
 #include <unistd.h>          // usleep
-
+#include <assert.h>          // assert
 
 #include "kbhit.h"           // kbhit
 #include "udp3.h"            // udp3 library
@@ -27,17 +27,85 @@
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
+#define MAXSI  50
+
 struct studentInfo 
 {
-  char ip[100];
-  char name[100];
-  int step;  // the step in each conversation
-} si[100];  // si is "student info"
+    char ip[100];
+    char name[100];
+    int step;  // the step in each conversation
+} si[MAXSI];  // si is "student info"
 
+void dumpClientInfo()
+{
+    int numActive = 0;
+    for (unsigned int i=0;i<MAXSI;i++)
+    {
+       if (si[i].step)
+       {
+           numActive++;
+           printf("%i > ip %s name %s step %d\n",i,si[i].ip,si[i].name,si[i].step);
+       }
+    }
+    printf("Data for %d active clients\n",numActive);
+}
 
-int findSLot()
+int activeConnections()
+{
+  int numActive = 0;
+  for (unsigned int i=0;i<MAXSI;i++)
+  {
+     if (si[i].step)
+     {
+        numActive++;
+     }
+  }
+  return numActive;
+}
+
+int findSlot(char *ip)
+{
+    // returns the slot number
+    // or the slot number if it is found
+    // the first free slot is allocated
+    int slot = -1;  // hope this causes an error
+
+    for (unsigned int i=0;i<MAXSI;i++)
+    {
+        if (strcmp(ip,si[i].ip)==0)
+        {
+           assert(slot!=-1);
+           slot = i;
+printf("new ip is %s  slot is %d \n",ip,slot);
+           break;
+        }
+    }
+
+    if (slot==-1) // it was not found
+    {
+        for (unsigned int i=0;i<MAXSI;i++)
+        {
+printf("in the loop i = %d slot = %d\n",i,slot);
+            if (!si[i].step)
+            {
+printf("i is %d slot is being set %d\n",i,slot);
+                assert(slot==-1);
+                slot = i;
+                si[i].step = 1;
+                strcpy(si[i].ip,ip);
+                break;
+            }
+        }
+    }
+
+    assert (slot!=-1 && slot<MAXSI);
+    return slot;
+}
+
+void talkingScript()
 {
 }
+
 int main(int argc, char* argv[])
 {
     char str[100] = { '\0' };
@@ -52,7 +120,7 @@ int main(int argc, char* argv[])
     // Start chat loop 
     while(!quit)
     {
-  usleep(100000); // 1/10 of a second. give the machine a break
+        usleep(100000); // 1/10 of a second. give the machine a break
         // send text
 #if 0
         if (kbhit())
@@ -64,12 +132,18 @@ int main(int argc, char* argv[])
         }
 #endif
         // receive text 
-  char *ip =  receiveUdpDataFrom(str, sizeof(str), 100) ;
+        char *ip =  receiveUdpDataFrom(str, sizeof(str), 100) ;
         if ( ip )
         {
-            printf("\n\t\t\t\t\t\t%s", str);
-      int firstOpenSlot = -1;
-      int found = -1;
+            printf("\n\t\t\t %s \t\t\t%s", ip,str);
+            int slot = findSlot(ip);
+            printf("found it in slot %d\n",slot);
+            if (activeConnections())
+            {
+                dumpClientInfo();
+            }
+            int firstOpenSlot = -1;
+            int found = -1;
             for (unsigned int i=0;i<100;i++) 
             {
                if (firstOpenSlot==-1 &&  si[i].step ==0)
